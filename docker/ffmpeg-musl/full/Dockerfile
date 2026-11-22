@@ -15,6 +15,7 @@
 FROM alpine:edge AS ffmpeg-builder
 
 ARG FFMPEG_VERSION=9.1
+ARG FFMPEG_SOURCE_URL=""
 ARG FFMPEG_SHA256=1a4d394ae63d190a526cd052eb4415c156b5c5e2df37efab41a7de0b8fde2433
 
 RUN set -eux; \
@@ -34,12 +35,15 @@ RUN set -eux; \
     esac
 
 RUN set -eux; \
+    SOURCE_URL="${FFMPEG_SOURCE_URL:-https://ffmpeg.org/releases/ffmpeg-${FFMPEG_VERSION}.tar.xz}"; \
     curl --fail --location --proto '=https' --tlsv1.2 --retry 3 --retry-delay 2 \
-        -o /tmp/ffmpeg.tar.xz \
-        "https://ffmpeg.org/releases/ffmpeg-${FFMPEG_VERSION}.tar.xz"; \
-    echo "${FFMPEG_SHA256}  /tmp/ffmpeg.tar.xz" | sha256sum -c -; \
-    tar -xJf /tmp/ffmpeg.tar.xz -C /tmp; \
-    cd "/tmp/ffmpeg-${FFMPEG_VERSION}"; \
+        -o /tmp/ffmpeg.tar "$SOURCE_URL"; \
+    if [ -n "$FFMPEG_SHA256" ] && [ "$FFMPEG_SHA256" != "skip" ]; then \
+        echo "${FFMPEG_SHA256}  /tmp/ffmpeg.tar" | sha256sum -c -; \
+    fi; \
+    mkdir -p /tmp/ffsrc; \
+    tar -xf /tmp/ffmpeg.tar -C /tmp/ffsrc; \
+    cd "$(find /tmp/ffsrc -mindepth 1 -maxdepth 1 -type d | head -1)"; \
     curl --fail --location --proto '=https' --tlsv1.2 --retry 3 --retry-delay 2 \
         -o /tmp/posix-ioctl.patch \
         "https://raw.githubusercontent.com/alpinelinux/aports/master/community/ffmpeg/posix-ioctl.patch"; \
@@ -52,6 +56,8 @@ RUN set -eux; \
         echo "posix-ioctl.patch does not apply; disabling libv4l2" >&2; \
         V4L2_FLAG=""; \
     fi; \
+    VULKAN_FLAG="--enable-vulkan"; \
+    case "$FFMPEG_VERSION" in 7.*) VULKAN_FLAG="";; esac; \
     SVT_FLAG=""; \
     VPL_FLAG=""; \
     case "$(uname -m)" in \
@@ -115,12 +121,11 @@ RUN set -eux; \
         --enable-sndio \
         --enable-vaapi \
         --enable-vdpau \
-        --enable-vulkan \
         --enable-zlib \
         --optflags="-O3" \
         --extra-ldflags="-Wl,-rpath,/opt/ffmpeg/lib" \
         --extra-ldexeflags="-Wl,-rpath,/opt/ffmpeg/lib" \
-        $SVT_FLAG $VPL_FLAG $V4L2_FLAG; \
+        $SVT_FLAG $VPL_FLAG $V4L2_FLAG $VULKAN_FLAG; \
     make -j"$(nproc)"; \
     make install; \
     cp COPYING* /opt/ffmpeg/; \
@@ -129,7 +134,7 @@ RUN set -eux; \
     rm -rf /opt/ffmpeg/include /opt/ffmpeg/share /opt/ffmpeg/lib/pkgconfig; \
     /opt/ffmpeg/bin/ffmpeg -version; \
     /opt/ffmpeg/bin/ffprobe -version; \
-    rm -rf /tmp/ffmpeg*
+    rm -rf /tmp/ffmpeg* /tmp/ffsrc
 
 # BtbN-style export: runtime tree only.
 FROM scratch AS artifact

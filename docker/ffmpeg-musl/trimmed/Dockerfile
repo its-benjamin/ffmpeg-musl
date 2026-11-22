@@ -8,6 +8,7 @@
 FROM alpine:edge AS ffmpeg-builder
 
 ARG FFMPEG_VERSION=9.1
+ARG FFMPEG_SOURCE_URL=""
 ARG FFMPEG_SHA256=1a4d394ae63d190a526cd052eb4415c156b5c5e2df37efab41a7de0b8fde2433
 
 RUN set -eux; \
@@ -22,12 +23,15 @@ RUN set -eux; \
     esac
 
 RUN set -eux; \
+    SOURCE_URL="${FFMPEG_SOURCE_URL:-https://ffmpeg.org/releases/ffmpeg-${FFMPEG_VERSION}.tar.xz}"; \
     curl --fail --location --proto '=https' --tlsv1.2 --retry 3 --retry-delay 2 \
-        -o /tmp/ffmpeg.tar.xz \
-        "https://ffmpeg.org/releases/ffmpeg-${FFMPEG_VERSION}.tar.xz"; \
-    echo "${FFMPEG_SHA256}  /tmp/ffmpeg.tar.xz" | sha256sum -c -; \
-    tar -xJf /tmp/ffmpeg.tar.xz -C /tmp; \
-    cd "/tmp/ffmpeg-${FFMPEG_VERSION}"; \
+        -o /tmp/ffmpeg.tar "$SOURCE_URL"; \
+    if [ -n "$FFMPEG_SHA256" ] && [ "$FFMPEG_SHA256" != "skip" ]; then \
+        echo "${FFMPEG_SHA256}  /tmp/ffmpeg.tar" | sha256sum -c -; \
+    fi; \
+    mkdir -p /tmp/ffsrc; \
+    tar -xf /tmp/ffmpeg.tar -C /tmp/ffsrc; \
+    cd "$(find /tmp/ffsrc -mindepth 1 -maxdepth 1 -type d | head -1)"; \
     VPL_FLAG=""; \
     if [ "$(uname -m)" = "x86_64" ]; then VPL_FLAG="--enable-libvpl"; fi; \
     ./configure \
@@ -76,7 +80,7 @@ RUN set -eux; \
     rm -rf /opt/ffmpeg/include /opt/ffmpeg/share /opt/ffmpeg/lib/pkgconfig; \
     /opt/ffmpeg/bin/ffmpeg -version; \
     /opt/ffmpeg/bin/ffprobe -version; \
-    rm -rf /tmp/ffmpeg*
+    rm -rf /tmp/ffmpeg* /tmp/ffsrc
 
 FROM scratch AS artifact
 COPY --from=ffmpeg-builder /opt/ffmpeg /opt/ffmpeg
