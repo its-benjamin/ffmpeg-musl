@@ -38,6 +38,10 @@ are not included. x86_64 enables VAAPI and QSV (libvpl); aarch64 enables VAAPI.
 Not built: 6.x, 5.x, 4.4 (they need older toolchains/dependency versions), and
 LGPL/nonfree variants (the bot needs GPL x264/x265).
 
+7.0/7.1 full builds omit the Vulkan flag (not present in those configure
+scripts) and disable libv4l2 when Alpine's `posix-ioctl.patch` does not apply.
+Everything else uses the same dependency/configure set as 8.x/9.x.
+
 ## Build
 
 Automatic triggers:
