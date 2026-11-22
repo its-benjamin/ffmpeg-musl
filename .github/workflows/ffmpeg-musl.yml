@@ -1,19 +1,18 @@
-# Build FFmpeg 9.1 for Alpine/musl once and publish the runtime tree as a
-# release asset. The bot image downloads the asset instead of compiling
-# FFmpeg in every Docker build, so deploys stay fast and cache-light.
+# Build FFmpeg 9.1 for Alpine/musl and publish BtbN-style release assets.
+# Two variants:
+#   full    - Alpine community/ffmpeg feature set (safe fallback)
+#   trimmed - only the codecs/filters the bot uses (smaller)
+# The bot image downloads the selected asset; it never compiles FFmpeg.
 name: Build FFmpeg 9.1 musl
 
 on:
   workflow_dispatch:
-  push:
-    tags:
-      - 'ffmpeg-*-musl-*'
 
 permissions:
   contents: write
 
 concurrency:
-  group: ffmpeg-musl-${{ github.ref }}
+  group: ffmpeg-musl-release
   cancel-in-progress: false
 
 jobs:
@@ -22,10 +21,20 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - arch: x86_64
+          - variant: full
+            arch: x86_64
             platform: linux/amd64
             runner: ubuntu-24.04
-          - arch: aarch64
+          - variant: full
+            arch: aarch64
+            platform: linux/arm64
+            runner: ubuntu-24.04-arm
+          - variant: trimmed
+            arch: x86_64
+            platform: linux/amd64
+            runner: ubuntu-24.04
+          - variant: trimmed
+            arch: aarch64
             platform: linux/arm64
             runner: ubuntu-24.04-arm
     runs-on: ${{ matrix.runner }}
@@ -34,15 +43,15 @@ jobs:
 
       - uses: docker/setup-buildx-action@v3
 
-      - name: Build FFmpeg 9.1
+      - name: Build FFmpeg 9.1 (${{ matrix.variant }})
         run: |
           mkdir -p dist artifacts
           docker buildx build \
             --platform "${{ matrix.platform }}" \
             --target artifact \
             --output type=local,dest=dist \
-            -f docker/ffmpeg-musl/Dockerfile \
-            docker/ffmpeg-musl
+            -f "docker/ffmpeg-musl/${{ matrix.variant }}/Dockerfile" \
+            "docker/ffmpeg-musl/${{ matrix.variant }}"
           test -x dist/opt/ffmpeg/bin/ffmpeg
           test -x dist/opt/ffmpeg/bin/ffprobe
 
@@ -51,15 +60,12 @@ jobs:
           tar --sort=name \
             --mtime='UTC 2020-01-01' \
             --owner=0 --group=0 --numeric-owner \
-            -cJf "artifacts/ffmpeg-9.1-musl-${{ matrix.arch }}.tar.xz" \
+            -cJf "artifacts/ffmpeg-9.1-musl-${{ matrix.variant }}-${{ matrix.arch }}.tar.xz" \
             -C dist/opt ffmpeg
-          cd artifacts
-          sha256sum "ffmpeg-9.1-musl-${{ matrix.arch }}.tar.xz" \
-            > "ffmpeg-9.1-musl-${{ matrix.arch }}.tar.xz.sha256"
 
       - uses: actions/upload-artifact@v4
         with:
-          name: ffmpeg-${{ matrix.arch }}
+          name: ffmpeg-${{ matrix.variant }}-${{ matrix.arch }}
           path: artifacts/*
           if-no-files-found: error
 
@@ -73,16 +79,28 @@ jobs:
           merge-multiple: true
           path: artifacts
 
+      - name: Checksums
+        run: |
+          cd artifacts
+          sha256sum *.tar.xz > SHA256SUMS
+          cat SHA256SUMS
+
       - uses: softprops/action-gh-release@v2
         with:
-          tag_name: ffmpeg-9.1-musl-r1
+          tag_name: musl-9.1-r1
           name: FFmpeg 9.1 musl runtime
           body: |
-            Prebuilt FFmpeg 9.1 for Alpine/musl, linked against Alpine edge
-            codec libraries. Runtime tree: `ffmpeg/bin/ffmpeg`,
-            `ffmpeg/bin/ffprobe`, `ffmpeg/lib/libav*.so*`.
+            FFmpeg 9.1 for Alpine/musl, built against Alpine edge libraries.
+
+            Variants:
+            - `full` — Alpine community/ffmpeg feature set (safe fallback)
+            - `trimmed` — only the codecs/filters used by the bot (smaller)
+
+            Assets: `ffmpeg-9.1-musl-<variant>-<arch>.tar.xz`, `SHA256SUMS`.
+            Contents: `ffmpeg/bin/ffmpeg`, `ffmpeg/bin/ffprobe`,
+            `ffmpeg/lib/libav*.so*`, FFmpeg COPYING files.
 
             Built by `.github/workflows/ffmpeg-musl.yml`; consumed by the bot
-            image via `FFMPEG_RELEASE` / `FFMPEG_SHA256_*` in the Dockerfile.
+            image after SHA-256 verification.
           files: artifacts/*
           fail_on_unmatched_files: true

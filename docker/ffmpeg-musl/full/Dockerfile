@@ -24,7 +24,7 @@ RUN set -eux; \
         fribidi-dev harfbuzz-dev ladspa-dev lame-dev libass-dev libbluray-dev \
         libdrm-dev libdvdnav-dev libdvdread-dev libjxl-dev libopenmpt-dev \
         libplacebo-dev librist-dev libsrt-dev libssh-dev libtheora-dev libva-dev \
-        libvdpau-dev libvorbis-dev libvpx-dev libwebp-dev libxcb-dev libxfixes-dev \
+        libvdpau-dev libvorbis-dev libvpx-dev libwebp-dev libx11-dev libxcb-dev libxfixes-dev \
         libxml2-dev lilv-dev openssl-dev opus-dev perl-dev pulseaudio-dev \
         rav1e-dev sndio-dev soxr-dev v4l-utils-dev vidstab-dev \
         vulkan-loader-dev x264-dev x265-dev xvidcore-dev zeromq-dev zimg-dev zlib-dev; \
@@ -123,6 +123,7 @@ RUN set -eux; \
         $SVT_FLAG $VPL_FLAG; \
     make -j"$(nproc)"; \
     make install; \
+    cp COPYING* /opt/ffmpeg/; \
     strip --strip-unneeded /opt/ffmpeg/bin/ffmpeg /opt/ffmpeg/bin/ffprobe; \
     find /opt/ffmpeg/lib -type f -name '*.so.*' -exec strip --strip-unneeded {} +; \
     rm -rf /opt/ffmpeg/include /opt/ffmpeg/share /opt/ffmpeg/lib/pkgconfig; \
