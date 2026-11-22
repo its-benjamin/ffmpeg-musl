@@ -40,7 +40,9 @@ LGPL/nonfree variants (the bot needs GPL x264/x265).
 
 7.0/7.1 full builds omit the Vulkan flag (not present in those configure
 scripts) and always disable libv4l2 (Alpine's `posix-ioctl.patch` targets
-8.x/9.x). Everything else uses the same dependency/configure set as 8.x/9.x.
+8.x/9.x). 7.0 full also disables libsvtav1: the current SVT-AV1 headers are
+incompatible with 7.0's encoder wrapper. Everything else uses the same
+dependency/configure set as 8.x/9.x.
 
 ## Build
 
