@@ -54,7 +54,7 @@ RUN set -eux; \
         echo "posix-ioctl.patch already applied upstream"; \
     else \
         echo "posix-ioctl.patch does not apply; disabling libv4l2" >&2; \
-        V4L2_FLAG=""; \
+        V4L2_FLAG="--disable-libv4l2"; \
     fi; \
     VULKAN_FLAG="--enable-vulkan"; \
     case "$FFMPEG_VERSION" in 7.*) VULKAN_FLAG="";; esac; \
