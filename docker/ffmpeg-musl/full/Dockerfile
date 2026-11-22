@@ -68,6 +68,7 @@ RUN set -eux; \
         x86_64) SVT_FLAG="--enable-libsvtav1"; VPL_FLAG="--enable-libvpl" ;; \
         aarch64) SVT_FLAG="--enable-libsvtav1" ;; \
     esac; \
+    case "$FFMPEG_VERSION" in 7.0.*) SVT_FLAG="--disable-libsvtav1";; esac; \
     ./configure \
         --prefix=/opt/ffmpeg \
         --disable-debug \
