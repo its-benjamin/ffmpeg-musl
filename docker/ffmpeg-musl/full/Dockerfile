@@ -47,15 +47,19 @@ RUN set -eux; \
     curl --fail --location --proto '=https' --tlsv1.2 --retry 3 --retry-delay 2 \
         -o /tmp/posix-ioctl.patch \
         "https://raw.githubusercontent.com/alpinelinux/aports/master/community/ffmpeg/posix-ioctl.patch"; \
-    V4L2_FLAG="--enable-libv4l2"; \
-    if patch -p1 --dry-run < /tmp/posix-ioctl.patch >/dev/null 2>&1; then \
-        patch -p1 < /tmp/posix-ioctl.patch; \
-    elif patch -p1 -R --dry-run < /tmp/posix-ioctl.patch >/dev/null 2>&1; then \
-        echo "posix-ioctl.patch already applied upstream"; \
-    else \
-        echo "posix-ioctl.patch does not apply; disabling libv4l2" >&2; \
-        V4L2_FLAG="--disable-libv4l2"; \
-    fi; \
+    V4L2_FLAG="--disable-libv4l2"; \
+    case "$FFMPEG_VERSION" in \
+        7.*) echo "FFmpeg 7.x: libv4l2 disabled";; \
+        *) V4L2_FLAG="--enable-libv4l2"; \
+           if patch -p1 --dry-run < /tmp/posix-ioctl.patch >/dev/null 2>&1; then \
+               patch -p1 < /tmp/posix-ioctl.patch; \
+           elif patch -p1 -R --dry-run < /tmp/posix-ioctl.patch >/dev/null 2>&1; then \
+               echo "posix-ioctl.patch already applied upstream"; \
+           else \
+               echo "posix-ioctl.patch does not apply; disabling libv4l2" >&2; \
+               V4L2_FLAG="--disable-libv4l2"; \
+           fi;; \
+    esac; \
     VULKAN_FLAG="--enable-vulkan"; \
     case "$FFMPEG_VERSION" in 7.*) VULKAN_FLAG="";; esac; \
     SVT_FLAG=""; \
