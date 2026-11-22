@@ -32,6 +32,7 @@ RUN set -eux; \
     mkdir -p /tmp/ffsrc; \
     tar -xf /tmp/ffmpeg.tar -C /tmp/ffsrc; \
     cd "$(find /tmp/ffsrc -mindepth 1 -maxdepth 1 -type d | head -1)"; \
+    if [ "$FFMPEG_VERSION" = "master" ]; then printf 'master\n' > RELEASE; fi; \
     VPL_FLAG=""; \
     if [ "$(uname -m)" = "x86_64" ]; then VPL_FLAG="--enable-libvpl"; fi; \
     ./configure \

@@ -44,6 +44,7 @@ RUN set -eux; \
     mkdir -p /tmp/ffsrc; \
     tar -xf /tmp/ffmpeg.tar -C /tmp/ffsrc; \
     cd "$(find /tmp/ffsrc -mindepth 1 -maxdepth 1 -type d | head -1)"; \
+    if [ "$FFMPEG_VERSION" = "master" ]; then printf 'master\n' > RELEASE; fi; \
     curl --fail --location --proto '=https' --tlsv1.2 --retry 3 --retry-delay 2 \
         -o /tmp/posix-ioctl.patch \
         "https://raw.githubusercontent.com/alpinelinux/aports/master/community/ffmpeg/posix-ioctl.patch"; \
