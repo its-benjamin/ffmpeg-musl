@@ -6,6 +6,12 @@
 name: Build FFmpeg 9.1 musl
 
 on:
+  push:
+    paths:
+      - 'docker/ffmpeg-musl/**'
+      - '.github/workflows/ffmpeg-musl.yml'
+  schedule:
+    - cron: '0 4 * * 1'
   workflow_dispatch:
 
 permissions:
@@ -87,7 +93,7 @@ jobs:
 
       - uses: softprops/action-gh-release@v2
         with:
-          tag_name: musl-9.1-r1
+          tag_name: musl-9.1
           name: FFmpeg 9.1 musl runtime
           body: |
             FFmpeg 9.1 for Alpine/musl, built against Alpine edge libraries.
@@ -101,6 +107,8 @@ jobs:
             `ffmpeg/lib/libav*.so*`, FFmpeg COPYING files.
 
             Built by `.github/workflows/ffmpeg-musl.yml`; consumed by the bot
-            image after SHA-256 verification.
+            image after SHA-256 verification. This release tag is rebuilt on
+            build-file changes and weekly; verify the downloaded files against
+            `SHA256SUMS`.
           files: artifacts/*
           fail_on_unmatched_files: true
