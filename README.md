@@ -1,24 +1,22 @@
 # ffmpeg-musl
 
-FFmpeg builds for Alpine/musl, published as GitHub Release tarballs.
-Built in GitHub Actions; the bot only downloads and verifies them.
+FFmpeg builds for Alpine/musl. **master is rebuilt daily**; 9.1 weekly.
+The bot uses the master trimmed asset.
 
 ## Versions
 
-| Asset version | Source |
-| --- | --- |
-| `master` | FFmpeg master branch (floating tarball) |
-| `9.1` | 9.1 |
-| `9.0` | 9.0.2 |
-| `8.1` | 8.1.3 |
-| `8.0` | 8.0.3 |
-| `7.1` | 7.1.5 |
-| `7.0` | 7.0.3 |
+| Asset version | Source | Release | Cadence |
+| --- | --- | --- | --- |
+| `master` | FFmpeg master (floating branch tarball) | `musl-master` | daily |
+| `9.1` | 9.1 release tarball (SHA-256 pinned) | `musl-9.1` | weekly |
+
+Older 7.x/8.x/9.0 builds were removed to keep CI bounded and avoid
+toolchain/API drift.
 
 Two variants per version:
 
-- **full** — Alpine community/ffmpeg feature set: all codecs, filters, devices,
-  and protocols Alpine ships.
+- **full** — Alpine community/ffmpeg feature set (all codecs, filters, devices,
+  and protocols Alpine ships).
 - **trimmed** — only the codecs/filters the bot uses: x264/x265, vpx, dav1d,
   webp, opus/vorbis/mp3lame, fontconfig/freetype/fribidi/harfbuzz, libass,
   libxml2, OpenSSL, zlib, VAAPI, and libvpl on x86_64.
@@ -26,7 +24,8 @@ Two variants per version:
 Assets:
 
 ```
-ffmpeg-<version>-musl-<variant>-<arch>.tar.xz
+ffmpeg-master-musl-<variant>-<arch>.tar.xz   (musl-master)
+ffmpeg-9.1-musl-<variant>-<arch>.tar.xz      (musl-9.1)
 SHA256SUMS
 ```
 
@@ -35,45 +34,34 @@ SHA256SUMS
 Binaries carry `-Wl,-rpath,/opt/ffmpeg/lib`; `ffplay`, docs, and debug symbols
 are not included. x86_64 enables VAAPI and QSV (libvpl); aarch64 enables VAAPI.
 
-Not built: 6.x, 5.x, 4.4 (they need older toolchains/dependency versions), and
-LGPL/nonfree variants (the bot needs GPL x264/x265).
-
-7.0/7.1 full builds omit the Vulkan flag (not present in those configure
-scripts) and always disable libv4l2 (Alpine's `posix-ioctl.patch` targets
-8.x/9.x). 7.0 full also disables libsvtav1: the current SVT-AV1 headers are
-incompatible with 7.0's encoder wrapper. Everything else uses the same
-dependency/configure set as 8.x/9.x.
-
 ## Build
 
-Automatic triggers:
+- master: `.github/workflows/ffmpeg-master.yml`; daily `0 4 * * *`,
+  Dockerfile changes, manual dispatch; 4 jobs; release `musl-master`.
+- 9.1: `.github/workflows/ffmpeg-musl.yml`; weekly `0 4 * * 1`, Dockerfile
+  changes, manual dispatch; 4 jobs; release `musl-9.1`.
 
-- push touching `docker/ffmpeg-musl/**` or the workflow
-- weekly schedule (`0 4 * * 1`)
-- manual `workflow_dispatch`
-
-28 jobs (7 versions × 2 variants × 2 architectures), limited to 20 concurrent
-on standard public runners. Release source versions are SHA-256 pinned; master
-is a floating branch tarball. Release tag: `musl-latest`.
+Standard public runners, native x86_64/aarch64. The master tarball floats;
+release sources are SHA-256 pinned.
 
 ## Install
 
+Master, trimmed:
+
 ```sh
-BASE=https://github.com/its-benjamin/ffmpeg-musl/releases/download/musl-latest
+BASE=https://github.com/its-benjamin/ffmpeg-musl/releases/download/musl-master
 curl -fsSLO "$BASE/SHA256SUMS"
-curl -fsSLO "$BASE/ffmpeg-9.1-musl-trimmed-x86_64.tar.xz"
+curl -fsSLO "$BASE/ffmpeg-master-musl-trimmed-x86_64.tar.xz"
 sha256sum -c --ignore-missing SHA256SUMS
 mkdir -p /opt
-tar -xJf ffmpeg-9.1-musl-trimmed-x86_64.tar.xz -C /opt
+tar -xJf ffmpeg-master-musl-trimmed-x86_64.tar.xz -C /opt
 /opt/ffmpeg/bin/ffmpeg -version
 ```
 
-The checksum line for the downloaded tarball must print `OK`. `musl-latest` is
-rebuilt; keep the `SHA256SUMS` values for a fixed reference.
+9.1 uses the same commands with the `musl-9.1` release and
+`ffmpeg-9.1-musl-...` asset. The downloaded tarball must print `OK`.
 
 ## Runtime libraries
-
-Install the Alpine edge packages for the variant before running.
 
 Trimmed:
 
@@ -95,9 +83,7 @@ libsrt libssh libxml2 libx11 libvdpau soxr libva vulkan-loader
 ```
 
 Add `libvpl`, `intel-media-driver`, and `onevpl-intel-gpu` on x86_64 for
-QSV/VAAPI. These are Alpine/musl libraries; the binaries do not run on glibc.
-
-The bot pins `musl-9.1` and defaults to the trimmed x86_64 asset.
+QSV/VAAPI. These are Alpine/musl libraries; binaries do not run on glibc.
 
 ## License
 
