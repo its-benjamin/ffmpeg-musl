@@ -1,6 +1,6 @@
 # Weekly FFmpeg 9.1 builds for Alpine/musl. Master is built separately and
 # daily in .github/workflows/ffmpeg-master.yml.
-name: Build FFmpeg 9.1 musl
+name: Autobuild FFmpeg 9.1 musl
 
 on:
   push:
@@ -90,8 +90,8 @@ jobs:
 
       - uses: softprops/action-gh-release@v2
         with:
-          tag_name: musl-9.1
-          name: FFmpeg 9.1 musl runtime
+          tag_name: autobuild-9.1
+          name: FFmpeg 9.1 musl autobuild
           body: |
             FFmpeg 9.1 for Alpine/musl.
 
@@ -103,3 +103,4 @@ jobs:
             `SHA256SUMS`.
           files: artifacts/*
           fail_on_unmatched_files: true
+          overwrite_files: true

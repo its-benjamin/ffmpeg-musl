@@ -1,14 +1,14 @@
 # ffmpeg-musl
 
-FFmpeg builds for Alpine/musl. **master is rebuilt daily**; 9.1 weekly.
+FFmpeg builds for Alpine/musl. **master is autobuilt daily**; 9.1 weekly.
 The bot uses the master trimmed asset.
 
 ## Versions
 
 | Asset version | Source | Release | Cadence |
 | --- | --- | --- | --- |
-| `master` | FFmpeg master (floating branch tarball) | `musl-master` | daily |
-| `9.1` | 9.1 release tarball (SHA-256 pinned) | `musl-9.1` | weekly |
+| `master` | FFmpeg master (floating branch tarball) | `autobuild-master` | daily |
+| `9.1` | 9.1 release tarball (SHA-256 pinned) | `autobuild-9.1` | weekly |
 
 Older 7.x/8.x/9.0 builds were removed to keep CI bounded and avoid
 toolchain/API drift.
@@ -24,8 +24,8 @@ Two variants per version:
 Assets:
 
 ```
-ffmpeg-master-musl-<variant>-<arch>.tar.xz   (musl-master)
-ffmpeg-9.1-musl-<variant>-<arch>.tar.xz      (musl-9.1)
+ffmpeg-master-musl-<variant>-<arch>.tar.xz   (autobuild-master)
+ffmpeg-9.1-musl-<variant>-<arch>.tar.xz      (autobuild-9.1)
 SHA256SUMS
 ```
 
@@ -37,9 +37,9 @@ are not included. x86_64 enables VAAPI and QSV (libvpl); aarch64 enables VAAPI.
 ## Build
 
 - master: `.github/workflows/ffmpeg-master.yml`; daily `0 4 * * *`,
-  Dockerfile changes, manual dispatch; 4 jobs; release `musl-master`.
+  Dockerfile changes, manual dispatch; 4 jobs; release `autobuild-master`.
 - 9.1: `.github/workflows/ffmpeg-musl.yml`; weekly `0 4 * * 1`, Dockerfile
-  changes, manual dispatch; 4 jobs; release `musl-9.1`.
+  changes, manual dispatch; 4 jobs; release `autobuild-9.1`.
 
 Standard public runners, native x86_64/aarch64. The master tarball floats;
 release sources are SHA-256 pinned.
@@ -49,7 +49,7 @@ release sources are SHA-256 pinned.
 Master, trimmed:
 
 ```sh
-BASE=https://github.com/its-benjamin/ffmpeg-musl/releases/download/musl-master
+BASE=https://github.com/its-benjamin/ffmpeg-musl/releases/download/autobuild-master
 curl -fsSLO "$BASE/SHA256SUMS"
 curl -fsSLO "$BASE/ffmpeg-master-musl-trimmed-x86_64.tar.xz"
 sha256sum -c --ignore-missing SHA256SUMS
@@ -58,7 +58,7 @@ tar -xJf ffmpeg-master-musl-trimmed-x86_64.tar.xz -C /opt
 /opt/ffmpeg/bin/ffmpeg -version
 ```
 
-9.1 uses the same commands with the `musl-9.1` release and
+9.1 uses the same commands with the `autobuild-9.1` release and
 `ffmpeg-9.1-musl-...` asset. The downloaded tarball must print `OK`.
 
 ## Runtime libraries

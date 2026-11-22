@@ -1,7 +1,7 @@
 # Daily FFmpeg master (9.2-dev) builds for Alpine/musl.
 # Separate from the release-line workflow so a broken old version cannot block
 # master updates. The bot consumes the trimmed x86_64/aarch64 assets.
-name: Build FFmpeg master musl
+name: Autobuild FFmpeg master musl
 
 on:
   push:
@@ -91,8 +91,8 @@ jobs:
 
       - uses: softprops/action-gh-release@v2
         with:
-          tag_name: musl-master
-          name: FFmpeg master musl runtime
+          tag_name: autobuild-master
+          name: FFmpeg master musl autobuild
           body: |
             FFmpeg master (9.2-dev) for Alpine/musl.
 
@@ -104,3 +104,4 @@ jobs:
             changes. Verify downloads against `SHA256SUMS`.
           files: artifacts/*
           fail_on_unmatched_files: true
+          overwrite_files: true
