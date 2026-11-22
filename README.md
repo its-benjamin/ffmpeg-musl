@@ -39,8 +39,8 @@ Not built: 6.x, 5.x, 4.4 (they need older toolchains/dependency versions), and
 LGPL/nonfree variants (the bot needs GPL x264/x265).
 
 7.0/7.1 full builds omit the Vulkan flag (not present in those configure
-scripts) and disable libv4l2 when Alpine's `posix-ioctl.patch` does not apply.
-Everything else uses the same dependency/configure set as 8.x/9.x.
+scripts) and always disable libv4l2 (Alpine's `posix-ioctl.patch` targets
+8.x/9.x). Everything else uses the same dependency/configure set as 8.x/9.x.
 
 ## Build
 
