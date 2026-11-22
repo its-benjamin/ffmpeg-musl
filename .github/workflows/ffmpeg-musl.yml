@@ -1,0 +1,88 @@
+# Build FFmpeg 9.1 for Alpine/musl once and publish the runtime tree as a
+# release asset. The bot image downloads the asset instead of compiling
+# FFmpeg in every Docker build, so deploys stay fast and cache-light.
+name: Build FFmpeg 9.1 musl
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - 'ffmpeg-*-musl-*'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: ffmpeg-musl-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: x86_64
+            platform: linux/amd64
+            runner: ubuntu-24.04
+          - arch: aarch64
+            platform: linux/arm64
+            runner: ubuntu-24.04-arm
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Build FFmpeg 9.1
+        run: |
+          mkdir -p dist artifacts
+          docker buildx build \
+            --platform "${{ matrix.platform }}" \
+            --target artifact \
+            --output type=local,dest=dist \
+            -f docker/ffmpeg-musl/Dockerfile \
+            docker/ffmpeg-musl
+          test -x dist/opt/ffmpeg/bin/ffmpeg
+          test -x dist/opt/ffmpeg/bin/ffprobe
+
+      - name: Package artifact
+        run: |
+          tar --sort=name \
+            --mtime='UTC 2020-01-01' \
+            --owner=0 --group=0 --numeric-owner \
+            -cJf "artifacts/ffmpeg-9.1-musl-${{ matrix.arch }}.tar.xz" \
+            -C dist/opt ffmpeg
+          cd artifacts
+          sha256sum "ffmpeg-9.1-musl-${{ matrix.arch }}.tar.xz" \
+            > "ffmpeg-9.1-musl-${{ matrix.arch }}.tar.xz.sha256"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ffmpeg-${{ matrix.arch }}
+          path: artifacts/*
+          if-no-files-found: error
+
+  release:
+    needs: build
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: ffmpeg-*
+          merge-multiple: true
+          path: artifacts
+
+      - uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ffmpeg-9.1-musl-r1
+          name: FFmpeg 9.1 musl runtime
+          body: |
+            Prebuilt FFmpeg 9.1 for Alpine/musl, linked against Alpine edge
+            codec libraries. Runtime tree: `ffmpeg/bin/ffmpeg`,
+            `ffmpeg/bin/ffprobe`, `ffmpeg/lib/libav*.so*`.
+
+            Built by `.github/workflows/ffmpeg-musl.yml`; consumed by the bot
+            image via `FFMPEG_RELEASE` / `FFMPEG_SHA256_*` in the Dockerfile.
+          files: artifacts/*
+          fail_on_unmatched_files: true
