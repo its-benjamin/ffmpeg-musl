@@ -8,9 +8,9 @@
 # 9.0.2 package cannot silently break a download/convert/music path. The
 # only removals are ffplay, docs and debug symbols.
 #
-# BtbN-style release asset: a tar of the runtime tree (`bin/` + `lib/`).
-# Unlike BtbN it links Alpine's shared musl libraries, so the artifact is
-# small and hardware acceleration (VAAPI/QSV) uses the system drivers.
+# Release asset: a tar of the runtime tree (`bin/` + `lib/`).
+# It links Alpine's shared musl libraries, so the artifact is small and
+# hardware acceleration (VAAPI/QSV) uses the system drivers.
 
 FROM alpine:edge AS ffmpeg-builder
 
@@ -142,6 +142,6 @@ RUN set -eux; \
     /opt/ffmpeg/bin/ffprobe -version; \
     rm -rf /tmp/ffmpeg* /tmp/ffsrc
 
-# BtbN-style export: runtime tree only.
+# Export: runtime tree only.
 FROM scratch AS artifact
 COPY --from=ffmpeg-builder /opt/ffmpeg /opt/ffmpeg

@@ -1,5 +1,6 @@
 # Weekly FFmpeg 9.1 builds for Alpine/musl. Master is built separately and
-# daily in .github/workflows/ffmpeg-master.yml.
+# daily in .github/workflows/ffmpeg-master.yml. Each run publishes one dated
+# autobuild-9.1-YYYY-MM-DD-HH-MM release; it is not marked Latest.
 name: Autobuild FFmpeg 9.1 musl
 
 on:
@@ -75,7 +76,12 @@ jobs:
   release:
     needs: build
     runs-on: ubuntu-24.04
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
     steps:
+      - uses: actions/checkout@v4
+
       - uses: actions/download-artifact@v4
         with:
           pattern: ffmpeg-9.1-*
@@ -88,19 +94,56 @@ jobs:
           sha256sum *.tar.xz > SHA256SUMS
           cat SHA256SUMS
 
-      - uses: softprops/action-gh-release@v2
-        with:
-          tag_name: autobuild-9.1
-          name: FFmpeg 9.1 musl autobuild
-          body: |
-            FFmpeg 9.1 for Alpine/musl.
+      - name: Publish dated release
+        run: |
+          set -euo pipefail
+          STAMP="$(date -u +'%Y-%m-%d %H:%M UTC')"
+          TAG="autobuild-9.1-$(date -u +'%Y-%m-%d-%H-%M')"
+          {
+            echo "FFmpeg 9.1 for Alpine/musl."
+            echo
+            echo "Built from the pinned FFmpeg 9.1 release tarball at ${STAMP}."
+            echo
+            echo "| Asset | Size |"
+            echo "|:--|--:|"
+            for f in artifacts/*.tar.xz; do
+              printf '| `%s` | %s |\n' "$(basename "$f")" "$(du -h "$f" | cut -f1)"
+            done
+            echo
+            printf 'Checksums: [`SHA256SUMS`](https://github.com/%s/releases/download/%s/SHA256SUMS).\n' "$GH_REPO" "$TAG"
+          } > "$RUNNER_TEMP/release-body.md"
+          gh release create "$TAG" --target main --latest=false \
+            --title "FFmpeg 9.1 musl autobuild ${STAMP}" \
+            --notes-file "$RUNNER_TEMP/release-body.md" artifacts/*
 
-            Assets: `ffmpeg-9.1-musl-<variant>-<arch>.tar.xz`, `SHA256SUMS`.
-            Variants: full (Alpine feature set), trimmed (bot codec/filter set).
-            Architectures: x86_64, aarch64.
-
-            Rebuilt weekly and on Dockerfile changes. Verify downloads against
-            `SHA256SUMS`.
-          files: artifacts/*
-          fail_on_unmatched_files: true
-          overwrite_files: true
+      - name: Prune dated releases
+        run: |
+          set -euo pipefail
+          export LC_ALL=C
+          mapfile -t tags < <(
+            gh release list --limit 200 --json tagName \
+              --jq '.[] | select(.tagName | startswith("autobuild-9.1-")) | .tagName' \
+              | sort -r
+          )
+          keep=()
+          for tag in "${tags[@]:0:14}"; do keep+=("$tag"); done
+          declare -A seen_months=()
+          monthly=0
+          for tag in "${tags[@]}"; do
+            rest="${tag#autobuild-9.1-}"
+            month="${rest:0:7}"
+            if [[ -z "${seen_months[$month]:-}" ]]; then
+              seen_months[$month]=1
+              keep+=("$tag")
+              monthly=$((monthly + 1))
+              if (( monthly >= 24 )); then break; fi
+            fi
+          done
+          declare -A keep_set=()
+          for tag in "${keep[@]}"; do keep_set[$tag]=1; done
+          for tag in "${tags[@]}"; do
+            if [[ -z "${keep_set[$tag]:-}" ]]; then
+              echo "Deleting $tag"
+              gh release delete "$tag" --cleanup-tag --yes || echo "warning: failed to delete $tag"
+            fi
+          done
